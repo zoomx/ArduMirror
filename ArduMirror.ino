@@ -1,7 +1,7 @@
 /*
-***************
-* ArduMirror  *
-***************
+********************
+* MirrorStepper04  *
+********************
 
  Control of a mirror with pan and tilt, two relays and one servo.
  Installed at La Montagnola station to control
@@ -24,13 +24,13 @@
 
  2015 06 11
  Added Servo control
- 
+
  2015 09 16
  Added LimitSwitch NOT WORKING!!!
 
  2016 01 20
  New Limits implementation
- 
+
  */
 
 #define LEDPIN 13  //Led is on pin 13 in Arduino UNO boards.
@@ -80,6 +80,9 @@ int Tilt_Actual_Position;
 
 int Pan_End_Position;
 int Tilt_End_Position;
+
+int Pan_increment = 1;  //Da correggere nel codice per vedere se va incrementato o decrementato a seconda del movimento.
+int Tilt_increment = 1;
 
 
 
@@ -150,15 +153,15 @@ void PrintMenu() {
     Serial.println(F("Type number and press enter"));
 
 
-b=right1 dir=1
-a=left1 dir=0
+  b=right1 dir=1
+  a=left1 dir=0
 
-letters->pan
+  letters->pan
 
-1=up dir=0
-2=down dir=1
-numbers->tilt
-    
+  1=up dir=0
+  2=down dir=1
+  numbers->tilt
+
    */
 
   Serial.println(F("1 1 One step | 2 1 -One step"));
@@ -179,37 +182,46 @@ numbers->tilt
   Serial.println(F("--------------------"));
   Serial.println(F("Type number and press enter"));
 
-// AGGIUNGERE
-//GOTO
-//RESET FINECORSA
+  // AGGIUNGERE
+  //GOTO
+  //RESET FINECORSA
 
 
 }
 
 void Step() {
   //Tilt
+  //Controlla se non siamo ad un fine corsa
   digitalWrite(STEP1PULSE, HIGH);
   delayMicroseconds(DELAY);
   digitalWrite(STEP1PULSE, LOW);
   delayMicroseconds(DELAY);
+  Tilt_Actual_Position = Tilt_Actual_Position + Tilt_increment;
 }
 
 void Step2() {
   //Pan
+  //Controlla se non siamo ad un fine corsa
   digitalWrite(STEP2PULSE, HIGH);
   delayMicroseconds(DELAY);
   digitalWrite(STEP2PULSE, LOW);
   delayMicroseconds(DELAY);
+  Pan_Actual_Position = Pan_Actual_Position + Pan_increment;
 }
 
+//Tilt
 void Steps(int passi, int dir) {
   if (dir == 1)  //Right
   {
     digitalWrite(STEP1DIR, HIGH); //Right
+    Tilt_increment = 1;
+    //si decide anche quale finecorsa usare
   }
   else
   {
     digitalWrite(STEP1DIR, LOW); //Left
+    Tilt_increment = -1;
+    //si decide anche quale finecorsa usare
   }
   for (int i = 0; i <= passi; i++) {
     Step();
@@ -217,18 +229,25 @@ void Steps(int passi, int dir) {
   }
 }
 
+//Pan
 void Steps2(int passi, int dir) {
   if (dir == 1) //Down
   {
     digitalWrite(STEP2DIR, HIGH); //Down
+    Pan_increment = 1;
+    //si decide anche quale finecorsa usare
   }
   else
   {
     digitalWrite(STEP2DIR, LOW); //Up
+    Pan_increment = -1;
+    //si decide anche quale finecorsa usare
   }
   for (int i = 0; i <= passi; i++) {
     Step2();
     //delay(10);
+    // stampa la posizione attuale
+    
   }
 }
 
@@ -237,7 +256,7 @@ void ParseMenu(char Stringa) {
   boolean IsKnownCommand = true;
   switch (Stringa) {
     case '1': //Up
-      Steps(1, 0);
+      Steps(1, 0);    //Aggiungerei alla fine anche una stampa di un OK per stabilire che ha finito. Oppure su richiesta? No, la richiesta potrebbe essere fatta prima della fine del comando.
       break;
     case '2': //Down
       Steps(1, 1);
@@ -334,7 +353,7 @@ void ParseMenu(char Stringa) {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("MirrorStepperServo04");
 
   pinMode(STEP1DIR, OUTPUT);
@@ -368,3 +387,6 @@ void loop() {
   //Serial.println(inString);
   ParseMenu(comm);
 }
+
+
+
