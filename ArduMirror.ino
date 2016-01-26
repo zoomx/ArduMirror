@@ -223,7 +223,7 @@ void Steps(int passi, int dir) {
     Tilt_increment = -1;
     //si decide anche quale finecorsa usare
   }
-  for (int i = 0; i <= passi; i++) {
+  for (int i = 0; i < passi; i++) {
     Step();
     //delay(10);
   }
@@ -243,11 +243,11 @@ void Steps2(int passi, int dir) {
     Pan_increment = -1;
     //si decide anche quale finecorsa usare
   }
-  for (int i = 0; i <= passi; i++) {
+  for (int i = 0; i < passi; i++) {
     Step2();
     //delay(10);
     // stampa la posizione attuale
-    
+
   }
 }
 
@@ -341,15 +341,28 @@ void ParseMenu(char Stringa) {
       Servocamera.write(angle);
       break;
     default:
-      Serial.print(F("Command Unknown! ->"));
-      Serial.println(Stringa, HEX);
+      //Serial.print(F("Command Unknown! ->"));
+      //Serial.println(Stringa, HEX);
       IsKnownCommand = false;
   }
   if (IsKnownCommand == true)
   {
     Serial.println(F("OK"));
+    EndCommand();
+    // Serial.println(F("OK"));
+    Blink();
+  } else {
+    Serial.println(F("ERROR!"));
+    Serial.println(Stringa, HEX);
+    Serial.println(Stringa, HEX);
     Blink();
   }
+}
+
+void EndCommand() {
+
+  Serial.println(Pan_Actual_Position);
+  Serial.println(Tilt_Actual_Position);
 }
 
 void setup() {
@@ -380,6 +393,9 @@ void setup() {
 
   Servocamera.attach(SERVO);
   Servocamera.write(SERVOCAMERA_POINT_POSITION);
+
+  Pan_Actual_Position = 500;
+  Tilt_Actual_Position = 500;
 }
 
 void loop() {
