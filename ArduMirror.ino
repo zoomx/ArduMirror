@@ -65,6 +65,7 @@ Servo Servocamera;
 //Serial input with termination section
 #define INLENGTH 6          //Max string lenght over serial. Needed for input with termination
 #define INTERMINATOR 13     //GetCharFromSerial routine cycle waiting for this character. Needed for input with termination
+
 char inString[INLENGTH + 1]; //GetCharFromSerial returns this char array. Needed for input with termination
 char comm;  //First character received. Needed for input with termination
 
@@ -88,8 +89,8 @@ int Tilt_increment = 1;
 
 
 void PrintVersion() {
-  Serial.println("MirrorStepperServo04");
-  Serial.print(F("Version 0.1"));
+  Serial.println("MirrorStepperServo v04");
+  Serial.print(F("Version 0.4"));
   Serial.print(__DATE__);  //this is the compiling date
   Serial.print(F(" "));
   Serial.println(__TIME__); //this is the compiling time
@@ -365,9 +366,13 @@ void EndCommand() {
   Serial.println(Tilt_Actual_Position);
 }
 
+void SetLimits() {
+
+}
+
 void setup() {
   Serial.begin(115200);
-  Serial.println("MirrorStepperServo04");
+  Serial.println("MirrorStepperServo v04");
 
   pinMode(STEP1DIR, OUTPUT);
   pinMode(STEP1PULSE, OUTPUT);
@@ -379,6 +384,11 @@ void setup() {
   pinMode(RELAY2, OUTPUT);
 
   pinMode(LEDPIN, OUTPUT);
+
+  pinMode(PAN_START_PIN, INPUT_PULLUP);
+  pinMode(PAN_END_PIN, INPUT_PULLUP);
+  pinMode(TILT_START_PIN, INPUT_PULLUP);
+  pinMode(TILT_END_PIN, INPUT_PULLUP);
 
   digitalWrite(STEP1DIR, LOW);
   digitalWrite(STEP1PULSE, LOW);
