@@ -49,12 +49,13 @@
 
 #define SERVO 10// was 11	//PWM works on pins 3, 5, 6, 9, 10, and 11
 
-#define PAN_START_PIN  11
-#define PAN_END_PIN  12
-#define TILT_START_PIN A0
-#define TILT_END_PIN A1
+#define PAN_START_PIN  A4 //davanti specchio
+#define PAN_END_PIN  A3   //dietro specchio
+#define TILT_START_PIN A1 //davanti specchio
+#define TILT_END_PIN A2 //dietro specchio
 
-#define DELAY 2000
+#define DELAY 20000
+#define DELAYM 10
 
 #define SERVOCAMERA_POINT_POSITION 90   //need calibration!!!!
 #define SERVOCAMERA_PARK_POSITION 50  //need calibration!!!!
@@ -128,32 +129,6 @@ void Blink() {
 
 void PrintMenu() {
   /*
-    Serial.println(F("1 1 One step"));
-    Serial.println(F("2 1 -One step"));
-    Serial.println(F("3 1 10 step"));
-    Serial.println(F("4 1 -10 step"));
-    Serial.println(F("5 1 50 step"));
-    Serial.println(F("6 1 -50 step"));
-
-    Serial.println(F("a 2 One step"));
-    Serial.println(F("b 2 -One step"));
-    Serial.println(F("c 2 10 step"));
-    Serial.println(F("d 2 -10 step"));
-    Serial.println(F("e 2 50 step"));
-    Serial.println(F("f 2 -50 step"));
-
-    Serial.println(F("r relay1 on"));
-    Serial.println(F("s relay1 off"));
-    Serial.println(F("t relay2 on"));
-    Serial.println(F("u relay2 off"));
-
-    Serial.println(F("v Print version"));
-    Serial.println(F("B Blink LED 13"));
-    Serial.println(F("m print menu"));
-    Serial.println(F("--------------------"));
-    Serial.println(F("Type number and press enter"));
-
-
   b=right1 dir=1
   a=left1 dir=0
 
@@ -194,9 +169,11 @@ void Step() {
   //Tilt
   //Controlla se non siamo ad un fine corsa
   digitalWrite(STEP1PULSE, HIGH);
-  delayMicroseconds(DELAY);
+  //delayMicroseconds(DELAY);
+  delay(DELAYM);
   digitalWrite(STEP1PULSE, LOW);
-  delayMicroseconds(DELAY);
+  //delayMicroseconds(DELAY);
+  delay(DELAYM);
   Tilt_Actual_Position = Tilt_Actual_Position + Tilt_increment;
 }
 
@@ -204,9 +181,11 @@ void Step2() {
   //Pan
   //Controlla se non siamo ad un fine corsa
   digitalWrite(STEP2PULSE, HIGH);
-  delayMicroseconds(DELAY);
+  //delayMicroseconds(DELAY);
+  delay(DELAYM);
   digitalWrite(STEP2PULSE, LOW);
-  delayMicroseconds(DELAY);
+  //delayMicroseconds(DELAY);
+  delay(DELAYM);
   Pan_Actual_Position = Pan_Actual_Position + Pan_increment;
 }
 
@@ -387,8 +366,8 @@ void setup() {
 
   pinMode(PAN_START_PIN, INPUT_PULLUP);
   pinMode(PAN_END_PIN, INPUT_PULLUP);
-  pinMode(TILT_START_PIN, INPUT_PULLUP);
-  pinMode(TILT_END_PIN, INPUT_PULLUP);
+  pinMode(TILT_START_PIN, INPUT);
+  pinMode(TILT_END_PIN, INPUT);
 
   digitalWrite(STEP1DIR, LOW);
   digitalWrite(STEP1PULSE, LOW);
@@ -413,6 +392,7 @@ void loop() {
   //Serial.println(inString);
   ParseMenu(comm);
 }
+
 
 
 
