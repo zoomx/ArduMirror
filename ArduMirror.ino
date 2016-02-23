@@ -116,7 +116,7 @@ void PrintVersion() {
 
 void recvWithEndMarker() {
   static byte ndx = 0;
-  char endMarker = '\n';
+  char endMarker = 13;   //'\n';
   char rc;
 
   // if (Serial.available() > 0) {
@@ -190,11 +190,12 @@ void PrintMenu() {
 
   Serial.println(F("r relay1 on  | s relay1 off"));
   Serial.println(F("t relay2 on  | u relay2 off"));
-
+  Serial.println(F("l Rst limits | p print actual position"));
   Serial.println(F("w Move Servo"));
   Serial.println(F("v Print version"));
   Serial.println(F("B Blink LED 13"));
   Serial.println(F("m print menu"));
+
   Serial.println(F("--------------------"));
   Serial.println(F("Type number and press enter"));
 
@@ -354,7 +355,7 @@ void ParseMenu(char Stringa) {
 
     case 'l':
       ResetSteppersLimits();
-      EndCommand();
+      //EndCommand();
       break;
 
     case 'r':
@@ -369,7 +370,9 @@ void ParseMenu(char Stringa) {
     case 'u':
       digitalWrite(RELAY2, LOW);
       break;
-
+    case 'p':
+      //EndCommand();
+      break;
 
     case 'm':
       PrintMenu();
@@ -419,7 +422,7 @@ void ParseMenu(char Stringa) {
   } else {
     Serial.println(F("ERROR!"));
     Serial.println(Stringa, HEX);
-    Serial.println(Stringa, HEX);
+    //Serial.println(Stringa, HEX);
     Blink();
   }
 }
@@ -435,61 +438,66 @@ void ResetSteppersLimits() {
   // Go to the Up end switch
   //#define TILT_START_PIN A1 //davanti specchio
 
-  Serial.print(digitalRead(TILT_START_PIN));
-  Serial.print(" ");
-  Serial.println(digitalRead(TILT_END_PIN));
+  //Serial.print(digitalRead(TILT_START_PIN));
+  //Serial.print(" ");
+  //Serial.println(digitalRead(TILT_END_PIN));
 
   Tilt_Actual_Position = 0;
   while (digitalRead(TILT_START_PIN) == 0) {
     Steps(1, 0);
   }
-  Serial.println(Tilt_Actual_Position);
-  delay(1000);
+  //Serial.println(Tilt_Actual_Position);
+  delay(500);
 
   Tilt_Actual_Position = 0;
   while (digitalRead(TILT_END_PIN) == 0) {
     Steps(1, 1);
   }
-  Serial.print("Total steps ->");
-  Serial.println(Tilt_Actual_Position);
-  delay(1000);
+  //Serial.print("Total steps ->");
+  //Serial.println(Tilt_Actual_Position);
+  delay(500);
 
   Tilt_End_Position = Tilt_Actual_Position;
   Tilt_Future_Position = Tilt_End_Position / 2;
-  Serial.print("Goto ->");
-  Serial.println(Tilt_Future_Position);
+  //Serial.print("Goto ->");
+  //Serial.println(Tilt_Future_Position);
   Steps(Tilt_Future_Position, 0);
-  Serial.println(Tilt_Actual_Position);
+  //Serial.println(Tilt_Actual_Position);
 
   //Repeat for Pan
 
-  Serial.print(digitalRead(PAN_START_PIN));
-  Serial.print(" ");
-  Serial.println(digitalRead(PAN_END_PIN));
-  /*
-    Pan_Actual_Position = 0;
-    while (digitalRead(PAN_START_PIN) == 0) {
-      Steps2(1, 0);
-    }
-    Serial.println(Pan_Actual_Position);
-    delay(1000);
+  //Serial.print(digitalRead(PAN_START_PIN));
+  //Serial.print(" ");
+  //Serial.println(digitalRead(PAN_END_PIN));
 
-    Pan_Actual_Position = 0;
-    while (digitalRead(PAN_END_PIN) == 0) {
-      Steps2(1, 1);
-    }
-    Serial.print("Total steps ->");
-    Serial.println(Pan_Actual_Position);
-    delay(1000);
+  Pan_Actual_Position = 0;
+  while (digitalRead(PAN_START_PIN) == 0) {
+    Steps2(1, 0);
+  }
+  //Serial.println(Pan_Actual_Position);
+  delay(500);
 
-    Pan_End_Position = Pan_Actual_Position;
-    Pan_Future_Position = Pan_End_Position / 2;
-    Serial.print("Goto ->");
-    Serial.println(Pan_Future_Position);
-    Steps2(Pan_Future_Position, 0);
-    Serial.println(Pan_Actual_Position);
-  */
+  Pan_Actual_Position = 0;
+  while (digitalRead(PAN_END_PIN) == 0) {
+    Steps2(1, 1);
+  }
+  //Serial.print("Total steps ->");
+  //Serial.println(Pan_Actual_Position);
+  delay(500);
 
+  Pan_End_Position = Pan_Actual_Position;
+  Pan_Future_Position = Pan_End_Position / 2;
+  //Serial.print("Goto ->");
+  //Serial.println(Pan_Future_Position);
+  Steps2(Pan_Future_Position, 0);
+  //Serial.println(Pan_Actual_Position);
+
+
+  //Print all
+  //Serial.println(Pan_End_Position);
+  //Serial.println(Tilt_End_Position);
+  //Serial.println(Pan_Actual_Position);
+  //Serial.println(Tilt_Actual_Position);
 }
 
 void ShowMovements() {
@@ -541,8 +549,10 @@ void setup() {
   Servocamera.attach(SERVO);
   Servocamera.write(SERVOCAMERA_POINT_POSITION);
 
-  //Pan_Actual_Position = 100;
-  //Tilt_Actual_Position = 100;
+  ResetSteppersLimits();
+
+  Serial.flush();
+
 }
 
 void loop() {
