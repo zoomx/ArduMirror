@@ -3,6 +3,8 @@
 * MirrorStepper04  *
 ********************
 
+By zoomx
+
  Control of a mirror with pan and tilt, two relays and one servo.
  Installed at La Montagnola station to control
  FTIR mirror (pan and tilt) and two power sokets.
@@ -36,6 +38,11 @@
 
  SerialInputNewline functions
  http://forum.arduino.cc/index.php?topic=288234.0
+
+2016 02 24
+Pan limit now is a real limit to avoid that mirror impact structures
+and damage pan limits
+Reset take care of all possible start position (I hope!)
 
  */
 
@@ -103,8 +110,7 @@ const byte numChars = 32;
 char receivedChars[numChars];  // an array to store the received data
 boolean newData = false;
 
-//char TempString[4];
-
+//***********************************************************************************************
 void PrintVersion() {
   Serial.println("MirrorStepperServo v04");
   Serial.print(F("Version 0.4"));
@@ -114,6 +120,7 @@ void PrintVersion() {
   Serial.println();
 }
 
+//***********************************************************************************************
 void recvWithEndMarker() {
   static byte ndx = 0;
   char endMarker = 13;   //'\n';
@@ -138,6 +145,7 @@ void recvWithEndMarker() {
   }
 }
 
+//***********************************************************************************************
 void GetCharFromSerial() {
   //Get string from serial and put in inString
   //first letter in comm
@@ -159,14 +167,15 @@ void GetCharFromSerial() {
   comm = inString[0];
 }
 
+//***********************************************************************************************
 void Blink() {
   // Serial.println(F("Blink LED"));  //Only for debug
-  digitalWrite(LEDPIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(100);               // wait for a second
-  digitalWrite(LEDPIN, LOW);    // turn the LED off by making the voltage LOW
+  digitalWrite(LEDPIN, HIGH);
+  delay(100);
+  digitalWrite(LEDPIN, LOW);
 }
 
-
+//***********************************************************************************************
 void PrintMenu() {
   /*
   b=right1 dir=1
@@ -191,7 +200,7 @@ void PrintMenu() {
   Serial.println(F("r relay1 on  | s relay1 off"));
   Serial.println(F("t relay2 on  | u relay2 off"));
   Serial.println(F("l Rst limits | p print actual position"));
-  Serial.println(F("w Move Servo"));
+  Serial.println(F("w Move Servo | n Rst limits2"));
   Serial.println(F("v Print version"));
   Serial.println(F("B Blink LED 13"));
   Serial.println(F("m print menu"));
@@ -199,16 +208,12 @@ void PrintMenu() {
   Serial.println(F("--------------------"));
   Serial.println(F("Type number and press enter"));
 
-  // AGGIUNGERE
-  //GOTO
-  //RESET FINECORSA
-
 
 }
 
+//***********************************************************************************************
 void Step() {
   //Tilt
-  //Controlla se non siamo ad un fine corsa
   digitalWrite(STEP1PULSE, HIGH);
   //delayMicroseconds(DELAY);
   delay(DELAYM);
@@ -218,9 +223,9 @@ void Step() {
   Tilt_Actual_Position = Tilt_Actual_Position + Tilt_increment;
 }
 
+//***********************************************************************************************
 void Step2() {
   //Pan
-  //Controlla se non siamo ad un fine corsa
   digitalWrite(STEP2PULSE, HIGH);
   //delayMicroseconds(DELAY);
   delay(DELAYM);
@@ -230,54 +235,58 @@ void Step2() {
   Pan_Actual_Position = Pan_Actual_Position + Pan_increment;
 }
 
+//***********************************************************************************************
 //Tilt
 void Steps(int passi, int dir) {
   if (dir == 1)  //Right
   {
-    digitalWrite(STEP1DIR, HIGH); //Right
+    digitalWrite(STEP1DIR, HIGH); //Down
     Tilt_increment = 1;
-    //si decide anche quale finecorsa usare
   }
   else
   {
-    digitalWrite(STEP1DIR, LOW); //Left
+    digitalWrite(STEP1DIR, LOW); //Up
     Tilt_increment = -1;
-    //si decide anche quale finecorsa usare
   }
   for (int i = 0; i < passi; i++) {
     Step();
-    //delay(10);
   }
 }
 
+//***********************************************************************************************
 //Pan
 void Steps2(int passi, int dir) {
   if (dir == 1) //Down
   {
-    digitalWrite(STEP2DIR, HIGH); //Down
+    digitalWrite(STEP2DIR, HIGH); //Right
     Pan_increment = 1;
     //si decide anche quale finecorsa usare
+    if (digitalRead(PAN_END_PIN) == 1) {
+      return;
+    }
   }
   else
   {
-    digitalWrite(STEP2DIR, LOW); //Up
+    digitalWrite(STEP2DIR, LOW); //Left
     Pan_increment = -1;
     //si decide anche quale finecorsa usare
+    if (digitalRead(PAN_START_PIN) == 1) {
+      return;
+    }
+
   }
   for (int i = 0; i < passi; i++) {
     Step2();
-    //delay(10);
-    // stampa la posizione attuale
-
   }
 }
 
+//***********************************************************************************************
 void ParseMenu(char Stringa) {
   //Serial.println(F("Parsing")); //Only for debug
   boolean IsKnownCommand = true;
   switch (Stringa) {
     case '1': //Up
-      Steps(1, 0);    //Aggiungerei alla fine anche una stampa di un OK per stabilire che ha finito. Oppure su richiesta? No, la richiesta potrebbe essere fatta prima della fine del comando.
+      Steps(1, 0);
       break;
     case '2': //Down
       Steps(1, 1);
@@ -314,13 +323,24 @@ void ParseMenu(char Stringa) {
       break;
 
     case 'g':
-      //goto
+      //goto NOT working!
 
       /*Get pan tilt and directions
        *Pan_increment, Pan_steps, Tilt_increment, Tilt_steps;
        *
-       *
+       * ex g11001100
+       * mean
+       * pan
+       * direction 1
+       * 100 steps
+       * tilt
+       * direction1
+       * 100 steps
+       * 
+       * Lenght must be checked!
+       * No checks at this time!
        */
+
       inString[0] = receivedChars[1];
       inString[1] = '\0';
       Pan_increment = atoi(inString);
@@ -340,24 +360,38 @@ void ParseMenu(char Stringa) {
       inString[2] = receivedChars[8];
       inString[3] = '\0';
       Tilt_steps = atoi(inString);
-
-      Serial.println(Pan_increment);
-      Serial.println(Pan_steps);
-      Serial.println(Tilt_increment);
-      Serial.println(Tilt_steps);
-
+      /*
+            Serial.println(Pan_increment);
+            Serial.println(Pan_steps);
+            Serial.println(Tilt_increment);
+            Serial.println(Tilt_steps);
+      */
+      
       //must check them before goto execution
       /*
        * increment must be 0 or 1
        * steps must be < Max
+       * Pan steps must be <Max
+       * Pan stesps must be <Max-Pan_Actual_Position + 10 as tolerance.
+       *
+      */
+      if (Pan_increment < 0 || Pan_increment > 1) {
+        break;
+      }
+      if (Tilt_increment < 0 || Tilt_increment > 1) {
+        break;
+      }
+      /*
+      int diff = Pan_End_Position - Pan_Actual_Position - Pan_steps;
+      if (diff<0 ) {
+        break;
+      }
       */
       break;
 
     case 'l':
       ResetSteppersLimits();
-      //EndCommand();
       break;
-
     case 'r':
       digitalWrite(RELAY1, HIGH);
       break;
@@ -371,9 +405,7 @@ void ParseMenu(char Stringa) {
       digitalWrite(RELAY2, LOW);
       break;
     case 'p':
-      //EndCommand();
       break;
-
     case 'm':
       PrintMenu();
       IsKnownCommand = false;  //because we don't need OK
@@ -409,31 +441,29 @@ void ParseMenu(char Stringa) {
       Servocamera.write(angle);
       break;
     default:
-      //Serial.print(F("Command Unknown! ->"));
-      //Serial.println(Stringa, HEX);
       IsKnownCommand = false;
   }
   if (IsKnownCommand == true)
   {
     Serial.println(F("OK"));
     EndCommand();
-    // Serial.println(F("OK"));
     Blink();
   } else {
     Serial.println(F("ERROR!"));
     Serial.println(Stringa, HEX);
-    //Serial.println(Stringa, HEX);
+    Serial.println(Stringa, HEX); //I need this because PC expects three lines
     Blink();
   }
 }
 
+//***********************************************************************************************
 void EndCommand() {
-
   Serial.println(Pan_Actual_Position);
   Serial.println(Tilt_Actual_Position);
 }
 
 
+//***********************************************************************************************
 void ResetSteppersLimits() {
   // Go to the Up end switch
   //#define TILT_START_PIN A1 //davanti specchio
@@ -441,6 +471,11 @@ void ResetSteppersLimits() {
   //Serial.print(digitalRead(TILT_START_PIN));
   //Serial.print(" ");
   //Serial.println(digitalRead(TILT_END_PIN));
+
+  //Check if position is TILT_START_PIN or near oi
+  if (digitalRead(TILT_START_PIN) == 1) {
+    Steps(150, 1);
+  }
 
   Tilt_Actual_Position = 0;
   while (digitalRead(TILT_START_PIN) == 0) {
@@ -465,7 +500,6 @@ void ResetSteppersLimits() {
   //Serial.println(Tilt_Actual_Position);
 
   //Repeat for Pan
-
   //Serial.print(digitalRead(PAN_START_PIN));
   //Serial.print(" ");
   //Serial.println(digitalRead(PAN_END_PIN));
@@ -492,7 +526,6 @@ void ResetSteppersLimits() {
   Steps2(Pan_Future_Position, 0);
   //Serial.println(Pan_Actual_Position);
 
-
   //Print all
   //Serial.println(Pan_End_Position);
   //Serial.println(Tilt_End_Position);
@@ -500,6 +533,7 @@ void ResetSteppersLimits() {
   //Serial.println(Tilt_Actual_Position);
 }
 
+//***********************************************************************************************
 void ShowMovements() {
   Serial.println("UP");
   Steps(50, 0); //UP
@@ -514,6 +548,10 @@ void ShowMovements() {
   Steps2(50, 0); //LEFT
 }
 
+/***********************************************************************************************
+ *
+ * *********************************************************************************************
+ */
 
 void setup() {
   Serial.begin(115200);
@@ -552,18 +590,28 @@ void setup() {
   ResetSteppersLimits();
 
   Serial.flush();
+  char rc;
 
+  while (Serial.available() > 0 ) {
+    rc = Serial.read();
+  }
 }
 
+/***********************************************************************************************
+ *
+ * *********************************************************************************************
+ */
+
 void loop() {
-  //GetCharFromSerial();
-  //Serial.println(inString);
+
   recvWithEndMarker();
   if (newData == true) {
     comm = receivedChars[0];
     ParseMenu(comm);
     newData = false;
   }
+  //GetCharFromSerial();
+  //Serial.println(inString);
   //ParseMenu(comm);
 }
 
