@@ -1,7 +1,7 @@
 /*
-********************
-* MirrorStepper04  *
-********************
+***************
+* ArduMirror  *
+***************
 
 By zoomx
 
@@ -44,6 +44,9 @@ Pan limit now is a real limit to avoid that mirror impact structures
 and damage pan limits
 Reset take care of all possible start position (I hope!)
 
+2016 02 25
+Name changed in ArduMirror, finally
+Other few updates
  */
 
 #define LEDPIN 13  //Led is on pin 13 in Arduino UNO boards.
@@ -58,9 +61,9 @@ Reset take care of all possible start position (I hope!)
 #define STEP2HALF 4
 
 #define RELAY1 2
-#define RELAY2 3
+#define RELAY2 10
 
-#define SERVO 10// was 11	//PWM works on pins 3, 5, 6, 9, 10, and 11
+#define SERVO 11	//PWM works on pins 3, 5, 6, 9, 10, and 11
 
 #define PAN_START_PIN  A4 //front mirror
 #define PAN_END_PIN  A3   //behind mirror
@@ -112,8 +115,8 @@ boolean newData = false;
 
 //***********************************************************************************************
 void PrintVersion() {
-  Serial.println("MirrorStepperServo v04");
-  Serial.print(F("Version 0.4 "));
+  Serial.println("ArduMirror");
+  Serial.print(F("Version 0.9 "));
   Serial.print(__DATE__);  //this is the compiling date
   Serial.print(F(" "));
   Serial.println(__TIME__); //this is the compiling time
@@ -434,7 +437,7 @@ void ParseMenu(char Stringa) {
       //angle=100*atoi(inString[1])+10*atoi(inString[2])+atoi(inString[3]);
 
       angle = atoi(inString);
-      Serial.println(angle);
+      //Serial.println(angle);
       //Check angle
       if (angle > 180)
       {
@@ -445,7 +448,7 @@ void ParseMenu(char Stringa) {
         angle = 0;
       }
 
-      Serial.println(angle);
+      //Serial.println(angle);
       Servocamera.write(angle);
       break;
     default:
@@ -564,7 +567,7 @@ void ShowMovements() {
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("MirrorStepperServo v04");
+  Serial.println("ArduMirror");
 
   pinMode(STEP1DIR, OUTPUT);
   pinMode(STEP1PULSE, OUTPUT);
@@ -626,6 +629,7 @@ void loop() {
   //Serial.println(inString);
   //ParseMenu(comm);
 }
+
 
 
 
