@@ -1,53 +1,83 @@
 /*
 ***************
-* ArduMirror  *
+  ArduMirror
 ***************
 
-By zoomx
+  By zoomx
 
- Control of a mirror with pan and tilt, two relays and one servo.
- Installed at La Montagnola station to control
- FTIR mirror (pan and tilt) and two power sokets.
- A servo controls the camera position.
+  Control of a mirror with pan and tilt, two relays and one servo.
+  Installed at La Montagnola station to control
+  FTIR mirror (pan and tilt) and two power sockets.
+  Camera position is controlled by a servo.
 
- was Stepper05SerialControl2
- Added serial control
- two Stepper Motor Control
- Move the motor depending on commands received
- Using two EasyDriver stepper module
+  was Stepper05SerialControl2
+  Added serial control
+  two Stepper Motor Control
+  Move the motor depending on commands received
+  Using two EasyDriver stepper module
 
- Added Relay control
+  Added Relay control
 
- Need optimisation to remove doubled functions
+  Need optimisation to remove doubled functions
 
- 2015 02 25
+  2015 02 25
 
- 2015 05 20
+  2015 05 20
 
- 2015 06 11
- Added Servo control
+  2015 06 11
+  Added Servo control
 
- 2015 09 16
- Added LimitSwitch NOT WORKING!!!
+  2015 09 16
+  Added LimitSwitch NOT WORKING!!!
 
- 2016 01 20
- New Limits implementation
+  2016 01 20
+  New Limits implementation
 
- 2016 02 16
- Added ResetSteppersLimits and
+  2016 02 16
+  Added ResetSteppersLimits and
 
- SerialInputNewline functions
- http://forum.arduino.cc/index.php?topic=288234.0
+  SerialInputNewline functions
+  http://forum.arduino.cc/index.php?topic=288234.0
 
-2016 02 24
-Pan limit now is a real limit to avoid that mirror impact structures
-and damage pan limits
-Reset take care of all possible start position (I hope!)
+  2016 02 24
+  Pan limit now is a real limit to avoid that mirror impact structures
+  and damage pan limits
+  Reset take care of all possible start position (I hope!)
 
-2016 02 25
-Name changed in ArduMirror, finally
-Other few updates
- */
+  2016 02 25
+  Name changed in ArduMirror, finally
+  Other few updates
+
+  2016 05 24
+  Tentativo di eliminare il carattere F0 (con 0D0A) che ricevo all'apertura della seriale. E' un bug del firmware del convertitore USB-seriale
+  Found a bug in USB chip: if COM port is open without reset it sends a pulse over serial line that is intepreted as a character
+  by Arduino, depending on baud settings. At 115200 is interpreted as F0
+
+  2017 04 20
+  Added Internal Temperature measurement
+
+
+  Pins
+   2  RELAY1
+   3
+   4  STEP2HALF
+   5  STEP2DIR
+   6  STEP2PULSE
+   7  STEP1HALF
+   8  STEP1DIR
+   9  STEP1PULSE
+  10  RELAY2
+  11  SERVO
+  12
+  13  LED
+
+  A0  ?????
+  A1  TILT_START_PIN
+  A2  TILT_END_PIN
+  A3  PAN_END_PIN
+  A4  PAN_START_PIN
+  A5
+*/
 
 #define LEDPIN 13  //Led is on pin 13 in Arduino UNO boards.
 
@@ -84,7 +114,7 @@ Servo Servocamera;
 #define INTERMINATOR 13     //GetCharFromSerial routine cycle waiting for this character. Needed for input with termination
 
 char inString[INLENGTH + 1]; //GetCharFromSerial returns this char array. Needed for input with termination
-char comm;  //First character received. Needed for input with termination
+unsigned char comm; //First character received. Needed for input with termination
 
 
 //***********
@@ -113,10 +143,11 @@ const byte numChars = 32;
 char receivedChars[numChars];  // an array to store the received data
 boolean newData = false;
 
+float tempADC;
 //***********************************************************************************************
 void PrintVersion() {
   Serial.println("ArduMirror");
-  Serial.print(F("Version 0.9 "));
+  Serial.print(F("Version 0.A "));
   Serial.print(__DATE__);  //this is the compiling date
   Serial.print(F(" "));
   Serial.println(__TIME__); //this is the compiling time
@@ -131,6 +162,7 @@ void recvWithEndMarker() {
   // if (Serial.available() > 0) {
   while (Serial.available() > 0 && newData == false) {
     rc = Serial.read();
+    //Serial.println(rc);
 
     if (rc != endMarker) {
       receivedChars[ndx] = rc;
@@ -153,7 +185,7 @@ void GetCharFromSerial() {
   //first letter in comm
   //http://forums.adafruit.com/viewtopic.php?f=8&t=9918
 
-  Serial.flush(); //flush all previous received and transmitted data
+  Serial.flush(); //flush all previous transmitted data.
   byte inCount = 0;
   do
   {
@@ -179,14 +211,14 @@ void Blink() {
 //***********************************************************************************************
 void PrintMenu() {
   /*
-  b=right1 dir=1
-  a=left1 dir=0
+    b=right1 dir=1
+    a=left1 dir=0
 
-  letters->pan
+    letters->pan
 
-  1=up dir=0
-  2=down dir=1
-  numbers->tilt
+    1=up dir=0
+    2=down dir=1
+    numbers->tilt
   */
 
   Serial.println(F("1 1 One step | 2 1 -One step"));
@@ -210,6 +242,51 @@ void PrintMenu() {
 
 
 }
+//***********************************************************************************************
+//----------------------------------------------------
+double GetInternalTemp(void)
+{
+  unsigned int wADC;
+  double t;
+
+  // The internal temperature has to be used
+  // with the internal reference of 1.1V.
+  // Channel 8 can not be selected with
+  // the analogRead function yet.
+
+  // Set the internal reference and mux.
+  ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+  ADCSRA |= _BV(ADEN);  // enable the ADC
+
+  delay(20);            // wait for voltages to become stable.
+
+  t = 0;
+
+  tempADC = 0; //
+
+  for (int i = 0; i <= 25; i++) {
+
+    ADCSRA |= _BV(ADSC);  // Start the ADC
+
+    // Detect end-of-conversion
+    while (bit_is_set(ADCSRA, ADSC));
+
+    // Reading register "ADCW" takes care of how to read ADCL and ADCH.
+    wADC = ADCW;
+
+    tempADC += wADC;
+    // The offset of 324.31 could be wrong. It is just an indication.
+    //t += (wADC - 324.31 ) / 1.22;
+    //t += (wADC * 0.731 - 256.42);  //get a T too low
+    //t += (wADC - 256.42 ) / 1.367989; //get a T too high
+  }
+  //t = t / 25;
+  tempADC = tempADC / 25;  //
+  // The returned temperature is in degrees Celsius.
+  t = tempADC * 0.731 - 256.42;
+  return (t);
+}
+
 
 //***********************************************************************************************
 void Step() {
@@ -326,20 +403,20 @@ void ParseMenu(char Stringa) {
       //uncomment steps and steps2 to have it working.
 
       /*Get pan tilt and directions
-       *Pan_increment, Pan_steps, Tilt_increment, Tilt_steps;
-       *
-       * ex g11001100
-       * mean
-       * pan
-       * direction 1
-       * 100 steps
-       * tilt
-       * direction1
-       * 100 steps
-       *
-       * Lenght must be checked!
-       * No checks at this time!
-       */
+        Pan_increment, Pan_steps, Tilt_increment, Tilt_steps;
+
+         ex g11001100
+         mean
+         pan
+         direction 1
+         100 steps
+         tilt
+         direction1
+         100 steps
+
+         Lenght must be checked!
+         No checks at this time!
+      */
 
       inString[0] = receivedChars[1];
       inString[1] = '\0';
@@ -369,11 +446,11 @@ void ParseMenu(char Stringa) {
 
       //must check them before goto execution
       /*
-       * increment must be 0 or 1
-       * steps must be < Max
-       * Pan steps must be <Max
-       * Pan stesps must be <Max-Pan_Actual_Position + 10 as tolerance.
-       *
+         increment must be 0 or 1
+         steps must be < Max
+         Pan steps must be <Max
+         Pan stesps must be <Max-Pan_Actual_Position + 10 as tolerance.
+
       */
       if (Pan_increment < 0 || Pan_increment > 1) {
         break;
@@ -382,13 +459,13 @@ void ParseMenu(char Stringa) {
         break;
       }
       /*
-      int diff = Pan_End_Position - Pan_Actual_Position - Pan_steps;
-      if (diff<0 ) {
+        int diff = Pan_End_Position - Pan_Actual_Position - Pan_steps;
+        if (diff<0 ) {
         break;
-      }
+        }
 
-      steps2(Pan_steps,Pan_increment);
-      steps(Tilt_steps,Tilt_increment);
+        steps2(Pan_steps,Pan_increment);
+        steps(Tilt_steps,Tilt_increment);
       */
       break;
 
@@ -416,6 +493,11 @@ void ParseMenu(char Stringa) {
     case 'B':
       Blink();
       break;
+    case 'T':
+      Serial.print(GetInternalTemp(), 1);
+      Serial.print(";");
+      Serial.println(tempADC);
+      break;
     case 'v':
       PrintVersion();
       break;
@@ -426,9 +508,9 @@ void ParseMenu(char Stringa) {
       inString[2] = receivedChars[3];
       inString[4] = '\0';
       /*
-      Serial.write(inString[1]);
-      Serial.write(inString[2]);
-      Serial.write(inString[3]);
+        Serial.write(inString[1]);
+        Serial.write(inString[2]);
+        Serial.write(inString[3]);
       */
       //inString[0] = '0';
       //Serial.println();
@@ -560,14 +642,17 @@ void ShowMovements() {
   Steps2(50, 0); //LEFT
 }
 
-/***********************************************************************************************
- *
- * *********************************************************************************************
- */
+//***********************************************************************************************
+//***********************************************************************************************
+
 
 void setup() {
   Serial.begin(115200);
   Serial.println("ArduMirror");
+  Serial.print(F("Compiled on "));
+  Serial.print(__DATE__);
+  Serial.print(F(" "));
+  Serial.println(__TIME__);
 
   pinMode(STEP1DIR, OUTPUT);
   pinMode(STEP1PULSE, OUTPUT);
@@ -601,33 +686,46 @@ void setup() {
 
   //ResetSteppersLimits();
   /*
-  Serial.flush();
-  char rc;
-  while (Serial.available() > 0 ) {
+    Serial.flush();
+    char rc;
+    while (Serial.available() > 0 ) {
     rc = Serial.read();
-  }
+    }
+  */
+  /*
+    while (Serial.available()) {
+    Serial.read();
+    }
   */
 }
 
-/***********************************************************************************************
- *
- * *********************************************************************************************
- */
+
+//***********************************************************************************************
+//***********************************************************************************************
 
 void loop() {
 
-  //New loop routines
   recvWithEndMarker();
   if (newData == true) {
     comm = receivedChars[0];
-    ParseMenu(comm);
+
+    Serial.print("Command->");
+    Serial.print(comm);
+    Serial.print(" ");
+    Serial.println(comm, HEX);
+
+    if (comm != 0xFFFFFFF0) {
+      ParseMenu(comm);
+    }
+    else
+    {
+      comm = 'p';
+      Serial.println(F("OK"));
+      EndCommand();
+      Blink();
+    }
     newData = false;
   }
-
-  //Old loop routines
-  //GetCharFromSerial();
-  //Serial.println(inString);
-  //ParseMenu(comm);
 }
 
 
